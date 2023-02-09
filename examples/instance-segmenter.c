@@ -1,5 +1,7 @@
 #include "darknet.h"
+#ifndef _WIN32
 #include <sys/time.h>
+#endif
 #include <assert.h>
 
 void normalize_image2(image p);

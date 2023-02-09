@@ -2,7 +2,9 @@
 
 #include <assert.h>
 #include <math.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 int inverted = 1;
 int noi = 1;
@@ -571,7 +573,10 @@ move pick_move(mcts_tree *tree, float temp, int player)
     m.value = (tree->result+1.)/2.;
     m.mcts  = (tree->mean[index]+1.)/2.;
 
-    int indexes[nind];
+    // int indexes[nind];
+    int* indexes = NULL;
+    indexes = (int*)malloc(sizeof(int) * nind);
+    memset(indexes, 0, sizeof(int) * nind);
     top_k(probs, 19*19+1, nind, indexes);
     print_board(stderr, tree->board, player, indexes);
 
@@ -580,6 +585,10 @@ move pick_move(mcts_tree *tree, float temp, int player)
     fprintf(stderr, "%d %d, Result: %f, Prior: %f, Prob: %f, Mean Value: %f, Child Result: %f, Visited: %d\n", ind/19, ind%19, tree->result, tree->prior[ind], probs[ind], tree->mean[ind], (tree->children[ind])?tree->children[ind]->result:0, tree->visit_count[ind]);
     ind = max_index(tree->prior, 19*19+1);
     fprintf(stderr, "%d %d, Result: %f, Prior: %f, Prob: %f, Mean Value: %f, Child Result: %f, Visited: %d\n", ind/19, ind%19, tree->result, tree->prior[ind], probs[ind], tree->mean[ind], (tree->children[ind])?tree->children[ind]->result:0, tree->visit_count[ind]);
+    
+    free(indexes);
+    indexes = NULL;
+
     return m;
 }
 
@@ -780,7 +789,10 @@ int print_game(float *board, FILE *fp)
     return count;
 }
 
-
+#ifdef _WIN32
+#include "WinSock2.h"
+#define STDIN_FILENO 0
+#endif
 int stdin_ready()
 {
     fd_set readfds;
@@ -791,9 +803,9 @@ int stdin_ready()
     timeout.tv_usec = 0;
     FD_SET(STDIN_FILENO, &readfds);
 
-    if (select(1, &readfds, NULL, NULL, &timeout)){
-        return 1;
-    }
+    // if (select(1, &readfds, NULL, NULL, &timeout)){
+    //     return 1;
+    // }
     return 0;
 }
 
@@ -1050,7 +1062,11 @@ void engine_go(char *filename, char *weightfile, int mcts_iters, float secs, flo
                 int count = print_game(board, f);
                 fprintf(f, "%s final_status_list dead\n", ids);
                 fclose(f);
+#ifdef _WIN32
+                FILE *p = _popen("./gnugo --mode gtp < game.txt", "r");
+#else
                 FILE *p = popen("./gnugo --mode gtp < game.txt", "r");
+#endif
                 for(i = 0; i < count; ++i){
                     free(fgetl(p));
                     free(fgetl(p));
@@ -1074,7 +1090,11 @@ void engine_go(char *filename, char *weightfile, int mcts_iters, float secs, flo
             int count = print_game(board, f);
             fprintf(f, "%s kgs-genmove_cleanup %s\n", ids, type);
             fclose(f);
+#ifdef _WIN32
+            FILE *p = _popen("./gnugo --mode gtp < game.txt", "r");
+#else
             FILE *p = popen("./gnugo --mode gtp < game.txt", "r");
+#endif
             for(i = 0; i < count; ++i){
                 free(fgetl(p));
                 free(fgetl(p));
@@ -1109,7 +1129,10 @@ void test_go(char *cfg, char *weights, int multi)
         float result = predict_move2(net, board, move, multi);
         printf("%.2f%% Win Chance\n", (result+1)/2*100);
 
-        int indexes[nind];
+        int* indexes = NULL;
+        indexes = (int*)malloc(sizeof(int)*nind);
+        memset(indexes, 0, sizeof(int) * nind);
+
         int row, col;
         top_k(move, 19*19+1, nind, indexes);
         print_board(stderr, board, color, indexes);
@@ -1181,6 +1204,8 @@ void test_go(char *cfg, char *weights, int multi)
         free(line);
         flip_board(board);
         color = -color;
+        free(indexes);
+        indexes = NULL;
     }
 }
 
@@ -1191,7 +1216,11 @@ float score_game(float *board)
     int count = print_game(board, f);
     fprintf(f, "final_score\n");
     fclose(f);
+#ifdef _WIN32
+    FILE *p = _popen("./gnugo --mode gtp < game.txt", "r");
+#else
     FILE *p = popen("./gnugo --mode gtp < game.txt", "r");
+#endif
     for(i = 0; i < count; ++i){
         free(fgetl(p));
         free(fgetl(p));
@@ -1206,7 +1235,11 @@ float score_game(float *board)
         if (n == 2) break;
     }
     if(player == 'W') score = -score;
+#ifdef _WIN32
+    _pclose(p);
+#else
     pclose(p);
+#endif
     return score;
 }
 
@@ -1253,7 +1286,11 @@ void self_go(char *filename, char *weightfile, char *f2, char *w2, int multi)
             else ++p2;
             ++total;
             fprintf(stderr, "Total: %d, Player 1: %f, Player 2: %f\n", total, (float)p1/total, (float)p2/total);
+#ifdef _WIN32
+            Sleep(1);
+#else
             sleep(1);
+#endif
             /*
                int i = (score > 0)? 0 : 1;
                int j;

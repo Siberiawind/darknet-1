@@ -14,20 +14,20 @@ ARCH= -gencode arch=compute_30,code=sm_30 \
 # ARCH= -gencode arch=compute_52,code=compute_52
 
 VPATH=./src/:./examples
-SLIB=libdarknet.so
-ALIB=libdarknet.a
-EXEC=darknet
+SLIB=libdarknet.dll
+ALIB=libdarknet.lib
+EXEC=darknet.exe
 OBJDIR=./obj/
 
-CC=gcc
-CPP=g++
+CC=cl
+CPP=cl
 NVCC=nvcc 
 AR=ar
 ARFLAGS=rcs
 OPTS=-Ofast
-LDFLAGS= -lm -pthread 
-COMMON= -Iinclude/ -Isrc/
-CFLAGS=-Wall -Wno-unused-result -Wno-unknown-pragmas -Wfatal-errors -fPIC
+LDFLAGS= -lm -lpthreadVC2 -L/c/msys64/usr/local/lib
+COMMON= -Iinclude/ -Isrc/ -I/c/msys64/usr/local/include/pthread
+CFLAGS=-WX -fPIC
 
 ifeq ($(OPENMP), 1) 
 CFLAGS+= -fopenmp
@@ -47,9 +47,9 @@ COMMON+= `pkg-config --cflags opencv`
 endif
 
 ifeq ($(GPU), 1) 
-COMMON+= -DGPU -I/usr/local/cuda/include/
+COMMON+= -DGPU -I$(CUDA_PATH)/include/
 CFLAGS+= -DGPU
-LDFLAGS+= -L/usr/local/cuda/lib64 -lcuda -lcudart -lcublas -lcurand
+LDFLAGS+= -L$(CUDA_PATH)/lib64 -lcuda -lcudart -lcublas -lcurand
 endif
 
 ifeq ($(CUDNN), 1) 
@@ -58,15 +58,17 @@ CFLAGS+= -DCUDNN
 LDFLAGS+= -lcudnn
 endif
 
-OBJ=gemm.o utils.o cuda.o deconvolutional_layer.o convolutional_layer.o list.o image.o activations.o im2col.o col2im.o blas.o crop_layer.o dropout_layer.o maxpool_layer.o softmax_layer.o data.o matrix.o network.o connected_layer.o cost_layer.o parser.o option_list.o detection_layer.o route_layer.o upsample_layer.o box.o normalization_layer.o avgpool_layer.o layer.o local_layer.o shortcut_layer.o logistic_layer.o activation_layer.o rnn_layer.o gru_layer.o crnn_layer.o demo.o batchnorm_layer.o region_layer.o reorg_layer.o tree.o  lstm_layer.o l2norm_layer.o yolo_layer.o iseg_layer.o image_opencv.o
-EXECOBJA=captcha.o lsd.o super.o art.o tag.o cifar.o go.o rnn.o segmenter.o regressor.o classifier.o coco.o yolo.o detector.o nightmare.o instance-segmenter.o darknet.o
+OBJ=gemm.obj utils.obj cuda.obj deconvolutional_layer.obj convolutional_layer.obj list.obj image.obj activations.obj im2col.obj col2im.obj blas.obj crop_layer.obj dropout_layer.obj maxpool_layer.obj softmax_layer.obj data.obj matrix.obj network.obj connected_layer.obj cost_layer.obj parser.obj option_list.obj detection_layer.obj route_layer.obj upsample_layer.obj box.obj normalization_layer.obj avgpool_layer.obj layer.obj local_layer.obj shortcut_layer.obj logistic_layer.obj activation_layer.obj rnn_layer.obj gru_layer.obj crnn_layer.obj demo.obj batchnorm_layer.obj region_layer.obj reorg_layer.obj tree.obj  lstm_layer.obj l2norm_layer.obj yolo_layer.obj iseg_layer.obj image_opencv.obj
+EXECOBJA=captcha.obj lsd.obj super.obj art.obj tag.obj cifar.obj go.obj rnn.obj segmenter.obj regressor.obj classifier.obj coco.obj yolo.obj detector.obj nightmare.obj instance-segmenter.obj darknet.obj
 ifeq ($(GPU), 1) 
 LDFLAGS+= -lstdc++ 
-OBJ+=convolutional_kernels.o deconvolutional_kernels.o activation_kernels.o im2col_kernels.o col2im_kernels.o blas_kernels.o crop_layer_kernels.o dropout_layer_kernels.o maxpool_layer_kernels.o avgpool_layer_kernels.o
+OBJ+=convolutional_kernels.obj deconvolutional_kernels.obj activation_kernels.obj im2col_kernels.obj col2im_kernels.obj blas_kernels.obj crop_layer_kernels.obj dropout_layer_kernels.obj maxpool_layer_kernels.obj avgpool_layer_kernels.obj
 endif
 
-EXECOBJ = $(addprefix $(OBJDIR), $(EXECOBJA))
-OBJS = $(addprefix $(OBJDIR), $(OBJ))
+# EXECOBJ = $(addprefix $(OBJDIR), $(EXECOBJA))
+EXECOBJ = $(EXECOBJA)
+# OBJS = $(addprefix $(OBJDIR), $(OBJ))
+OBJS = $(OBJ)
 DEPS = $(wildcard src/*.h) Makefile include/darknet.h
 
 all: obj backup results $(SLIB) $(ALIB) $(EXEC)
@@ -80,15 +82,15 @@ $(ALIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(SLIB): $(OBJS)
-	$(CC) $(CFLAGS) -shared $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) -shared -LD $^ -o $@ $(LDFLAGS)
 
-$(OBJDIR)%.o: %.cpp $(DEPS)
+%.obj: %.cpp $(DEPS)
 	$(CPP) $(COMMON) $(CFLAGS) -c $< -o $@
 
-$(OBJDIR)%.o: %.c $(DEPS)
+%.obj: %.c $(DEPS)
 	$(CC) $(COMMON) $(CFLAGS) -c $< -o $@
 
-$(OBJDIR)%.o: %.cu $(DEPS)
+%.obj: %.cu $(DEPS)
 	$(NVCC) $(ARCH) $(COMMON) --compiler-options "$(CFLAGS)" -c $< -o $@
 
 obj:

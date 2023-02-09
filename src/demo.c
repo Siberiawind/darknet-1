@@ -7,8 +7,9 @@
 #include "box.h"
 #include "image.h"
 #include "demo.h"
+#ifndef _WIN32
 #include <sys/time.h>
-
+#endif
 #define DEMO 1
 
 #ifdef OPENCV

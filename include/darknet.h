@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <pthread.h>
+#include "pthread.h"
+
+#pragma comment(lib, "C:\\msys64\\usr\\local\\lib\\pthreadVC2.lib")
 
 #ifdef GPU
     #define BLOCK 512
